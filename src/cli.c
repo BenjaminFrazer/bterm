@@ -9,6 +9,15 @@ static const char *esc_seq_cursor_right = "\x1B[%dC";
 /** Escape sequence - Cursor backward (left) */
 static const char *esc_seq_cursor_left = "\x1B[%dD";
 
+/** Escape sequence - Cursor down  */
+static const char *esc_seq_cursor_down = "\x1B[B";
+
+/** Escape sequence - Cursor up */
+static const char *esc_seq_cursor_up = "\x1B[A";
+
+/** Escape sequence - Horizontal absolute */
+static const char *esc_seq_cursor_horizontal_n = "\x1B[%dG";
+
 /** Escape sequence - Cursor save position */
 static const char *esc_seq_cursor_save = "\x1B[s";
 
@@ -93,14 +102,15 @@ char* _print_esc_seq(Cli* state){
 CLI_ERR cli_print(Cli* state, const char* msg){
 	const char newline[] = "\n";
 	const char carriage_return[] = "\r";
+	char buff_horizontal[8];
+	snprintf(buff_horizontal, sizeof(buff_horizontal), esc_seq_cursor_horizontal_n, state->hcursor+1); 
 	const char* writes[] = {
-		esc_seq_cursor_save,
 		esc_seq_delete_line,
 		&carriage_return[0],
 		msg,
 		&newline[0],
 		&state->linebuff[0],
-		esc_seq_cursor_restore,
+		&buff_horizontal[0],
 	};
 	for (int i = 0; i< sizeof(writes)/sizeof(char*); i++){
 		if (state->write_data(writes[i])!=0){
