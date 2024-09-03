@@ -1,0 +1,16 @@
+{
+	"name": "benf/bterm",
+	"version": "0.0.1",
+	"keywords": "terminal, cli, shell",
+	"description": "Light terminal",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/BenjaminFrazer/bterm"
+	},
+	"frameworks": "arduino",
+	"platforms": "espressif32",
+	"build": {
+		"libArchive": false,
+		"flags": ["-Iheaders","-Isrc"]
+	}
+}
