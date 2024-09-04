@@ -50,7 +50,7 @@ struct error_code_lut_row {
 
 extern const struct error_code_lut_row error_code_lut[];
 
-typedef int (Command_Func_t)(int argc, char* argv[]);
+typedef int (Command_Func_t)(Cli* state, int argc, char* argv[]);
 
 typedef int (Read_data_t)(char* data, int n);
 

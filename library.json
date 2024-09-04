@@ -1,5 +1,5 @@
 {
-	"name": "benf/bterm",
+	"name": "bterm",
 	"version": "0.0.1",
 	"keywords": "terminal, cli, shell",
 	"description": "Light terminal",

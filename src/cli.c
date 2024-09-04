@@ -86,6 +86,7 @@ const struct error_code_lut_row error_code_lut[] = {
 	CLI_ERR_DESC(ERR, HANDLE_KEYCODE),
 	CLI_ERR_DESC(WARN, UNKOWN_KEYCODE),
 	CLI_ERR_DESC(ERR, ESC_SEQ_BUFF_OVERFLOW),
+	CLI_ERR_DESC(ERR, MAX_ERRORCODE),
 };
 
 
@@ -108,6 +109,7 @@ CLI_ERR cli_print(Cli* state, const char* msg){
 		esc_seq_delete_line,
 		&carriage_return[0],
 		msg,
+		&carriage_return[0],
 		&newline[0],
 		&state->linebuff[0],
 		&buff_horizontal[0],
@@ -124,9 +126,13 @@ CLI_ERR cli_print(Cli* state, const char* msg){
 };
 
 Command_Func_t echo;
-int echo(int argn, char* argv[]){
+int echo(Cli* state, int argn, char* argv[]){
+	char buff[100];
 	for (int i=0; i<argn; i++){
-		printf("%s\n", argv[i]);
+		snprintf(buff, sizeof(buff),"%s\r\n" , argv[i]);
+		if (state->write_data(buff) !=0){
+			return -1;
+		}
 	}
 	return 0;
 };
@@ -167,7 +173,7 @@ CLI_ERR _move_cursor_horizontal(Cli* state, int n){
 	else { // move left
 		sprintf(buff, esc_seq_cursor_left, -n); 
 		}
-	if (state->write_data(buff)){
+	if (state->write_data(buff)!=0){
 			return CLI_ERR_WRITE;
 	}
 	state->hcursor = state->hcursor+n;
@@ -175,15 +181,22 @@ CLI_ERR _move_cursor_horizontal(Cli* state, int n){
 };
 
 CLI_ERR _delete_char_leftof_cursor(Cli* state){
+	CLI_ERR err = CLI_ERR_OK;
 	if(state->hcursor == 0){
 		WARNING("Cannot delete when cursor is at [0]");
 		return CLI_ERR_CANNOT_DELETE; // do nothing
 	}
 	int tail = state->head - state->hcursor + 1;
 	memmove(&state->linebuff[state->hcursor-1], &state->linebuff[state->hcursor], tail);
+
+	err = _move_cursor_horizontal(state, -1);
+	if (err != CLI_ERR_OK){
+		return err;
+	}
+	if (state->write_data(esc_seq_delete_char)!=0){
+			return CLI_ERR_WRITE;
+	}
 	state->head--;
-	_move_cursor_horizontal(state, -1);
-	state->write_data(esc_seq_delete_char);
 	return CLI_ERR_OK;
 };
 
@@ -199,7 +212,9 @@ CLI_ERR _insert_char_under_cursor(Cli* state, char c){
 	if(state->head != state->hcursor){
 		state->write_data(esc_seq_insert_char);
 	}
-	state->write_data(buff);
+	if (state->write_data(buff)!=0){
+			return CLI_ERR_WRITE;
+	}
 	state->head++;
 	state->hcursor++;
 	//_move_cursor_horizontal(state, state->hcursor+1);
@@ -258,7 +273,7 @@ CLI_ERR _execute_command_buff(Cli* state){
 	if (f == NULL){
 		return CLI_ERR_INVALID_COMMAND;
 	}
-	if (f(arg_next_idx, argv) !=0){
+	if (f(state, arg_next_idx, argv) !=0){
 		return CLI_ERR_USER_CMD_FAILED;
 	}
 	return CLI_ERR_OK;
@@ -287,12 +302,15 @@ CLI_ERR _handle_ctrl_character(Cli* state, unsigned char c){
 			//err = CLI_ERR_NOT_IMPLEMENTED;
 			break;
 		case 10: // line feed (new line)
-			state->write_data("\n");
+			state->write_data("\n\r");
 			err = _execute_command_buff(state);
 			_reset_prompt(state);
 			break;
-		case 12: // carriage return
-			err = CLI_ERR_NOT_IMPLEMENTED;
+		case 13: // carriage return
+			// do nothing
+			state->write_data("\n\r");
+			err = _execute_command_buff(state);
+			_reset_prompt(state);
 			//state->write_data("\nnewline");
 			//_execute_command_buff(state);
 			break;
@@ -326,6 +344,7 @@ CLI_ERR _handle_esc_character(Cli* state, char c){
 	if (state->escbuff_head >= sizeof(state->escape_buff)){
 		ERROR(_print_esc_seq(state));
 		state->s = NORMAL;
+		state->escbuff_head= 0;
 		return CLI_ERR_ESC_SEQ_BUFF_OVERFLOW;
 	}
 	state->escape_buff[state->escbuff_head] = c;
@@ -446,6 +465,7 @@ void _print_errors(Cli* state){
 		[CRIT]="CRIT",
 		[ERR]="ERR",
 		[WARN]="WARN",
+		[INFO]="INFO",
 	};
 	for (int i = 0; i<_error_count; i++){
 		int idx = (_error_head-_error_count + MAX_ERR_MSG) % MAX_ERR_MSG;
@@ -460,22 +480,23 @@ CLI_ERR _handle_input_errors(Cli* state, CLI_ERR err){
 	/* There may be some errors we wish to handle gracefully rather than raising 
 		* further up the callstack.
 	*/
-	if (error_code_lut[err].lvl >= state->debug){
-		if ((err>CLI_ERR_OK) && (err < CLI_ERR_MAX_ERRORCODE)){
+	
+	if ((err < CLI_ERR_MAX_ERRORCODE)){
+		if ((error_code_lut[err].lvl >= state->debug) && (err != CLI_ERR_OK)){
 			cli_print(state, error_code_lut[err].desc);
 		}
-		_print_errors(state);
-	}
-
-	_error_count = 0;
-
-	if (error_code_lut[err].lvl>=ERR){
-		return err;
+		// filter future errors
+		if (error_code_lut[err].lvl < ERR){
+			err = CLI_ERR_OK;
+		}
 	}
 	else {
-		return CLI_ERR_OK;
+		err = CLI_ERR_MAX_ERRORCODE;
 	}
+	_print_errors(state);
+	_error_count = 0;
 
+	return err;
 };
 
 CLI_ERR cli_handle_input(Cli * state){
