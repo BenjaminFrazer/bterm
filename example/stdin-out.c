@@ -77,7 +77,7 @@ int print_hello_cmd(Cli* state, int argc, char* argv[]){
 };
 
 Cli cli = {
-	.debug = INFO,
+	.debug = CLI_DBG_LVL_INFO,
 	.read_data = &read_from_stdin,
 	.write_data= &write_to_stdout,
 	.commands = {
