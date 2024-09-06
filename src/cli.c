@@ -51,30 +51,29 @@ void _error_message(const char* msg, const char* file, int line, enum severity t
 };
 
 
-#define WARNING(msg) _error_message(msg, __FILE__, __LINE__, WARN)
-#define ERROR(msg) _error_message(msg, __FILE__, __LINE__, ERR)
-#define CRITICAL_ERROR(msg) _error_message(msg, __FILE__, __LINE__, CRIT)
+#define WARNING(msg) _error_message(msg, __FILE__, __LINE__, CLI_DBG_LVL_WARN)
+#define ERROR(msg) _error_message(msg, __FILE__, __LINE__, CLI_DBG_LVL_ERR)
 #define CLI_ERR_DESC(sev, ec) [CLI_ERR ## _ ## ec] = {.desc={#ec}, .lvl=sev}
 
 const struct error_code_lut_row error_code_lut[] = {
-	CLI_ERR_DESC(INFO, OK),
-	CLI_ERR_DESC(CRIT, NOT_IMPLEMENTED),
-	CLI_ERR_DESC(WARN, INVALID_COMMAND),
-	CLI_ERR_DESC(ERR, USER_CMD_FAILED),
-	CLI_ERR_DESC(WARN, UNKOWN_ESCAPED_CHAR),
-	CLI_ERR_DESC(ERR, READ),
-	CLI_ERR_DESC(ERR, WRITE),
-	CLI_ERR_DESC(WARN, BUFFER_OVERFLOW),
-	CLI_ERR_DESC(WARN, DEV_NOT_INITIALISED),
-	CLI_ERR_DESC(INFO, CURSOR_EXCEEDS_BOUNDS),
-	CLI_ERR_DESC(INFO, CANNOT_DELETE),
-	CLI_ERR_DESC(WARN, UNKNOWN_CTL_CHAR),
-	CLI_ERR_DESC(WARN, UNKNOWN_SEQ_STATE),
-	CLI_ERR_DESC(WARN, UNKNOWN_CSI_CHAR),
-	CLI_ERR_DESC(ERR, HANDLE_KEYCODE),
-	CLI_ERR_DESC(WARN, UNKOWN_KEYCODE),
-	CLI_ERR_DESC(ERR, ESC_SEQ_BUFF_OVERFLOW),
-	CLI_ERR_DESC(ERR, MAX_ERRORCODE),
+	CLI_ERR_DESC(CLI_DBG_LVL_INFO, OK),
+	CLI_ERR_DESC(CLI_DBG_LVL_ERR, NOT_IMPLEMENTED),
+	CLI_ERR_DESC(CLI_DBG_LVL_WARN, INVALID_COMMAND),
+	CLI_ERR_DESC(CLI_DBG_LVL_ERR, USER_CMD_FAILED),
+	CLI_ERR_DESC(CLI_DBG_LVL_WARN, UNKOWN_ESCAPED_CHAR),
+	CLI_ERR_DESC(CLI_DBG_LVL_ERR, READ),
+	CLI_ERR_DESC(CLI_DBG_LVL_ERR, WRITE),
+	CLI_ERR_DESC(CLI_DBG_LVL_WARN, BUFFER_OVERFLOW),
+	CLI_ERR_DESC(CLI_DBG_LVL_WARN, DEV_NOT_INITIALISED),
+	CLI_ERR_DESC(CLI_DBG_LVL_INFO, CURSOR_EXCEEDS_BOUNDS),
+	CLI_ERR_DESC(CLI_DBG_LVL_INFO, CANNOT_DELETE),
+	CLI_ERR_DESC(CLI_DBG_LVL_WARN, UNKNOWN_CTL_CHAR),
+	CLI_ERR_DESC(CLI_DBG_LVL_WARN, UNKNOWN_SEQ_STATE),
+	CLI_ERR_DESC(CLI_DBG_LVL_WARN, UNKNOWN_CSI_CHAR),
+	CLI_ERR_DESC(CLI_DBG_LVL_ERR, HANDLE_KEYCODE),
+	CLI_ERR_DESC(CLI_DBG_LVL_WARN, UNKOWN_KEYCODE),
+	CLI_ERR_DESC(CLI_DBG_LVL_ERR, ESC_SEQ_BUFF_OVERFLOW),
+	CLI_ERR_DESC(CLI_DBG_LVL_ERR, MAX_ERRORCODE),
 };
 
 
@@ -106,7 +105,7 @@ CLI_ERR cli_print(Cli* state, const char* msg){
 		if (state->write_data(writes[i])!=0){
 			char msgbuff[MAX_ERR_MSG_CHARS];
 			snprintf(msgbuff, MAX_ERR_MSG_CHARS, "Failed to write sequence: %s to device", writes[i]); 
-			CRITICAL_ERROR(msgbuff);
+			ERROR(msgbuff);
 			return CLI_ERR_WRITE;
 		};
 	}
@@ -450,10 +449,9 @@ int _print_err(Cli* state, CLI_ERR err){
 void _print_errors(Cli* state){
 	char buff[100];
 	char _err_type_lut[][5] = {
-		[CRIT]="CRIT",
-		[ERR]="ERR",
-		[WARN]="WARN",
-		[INFO]="INFO",
+		[CLI_DBG_LVL_ERR]="ERR",
+		[CLI_DBG_LVL_WARN]="WARN",
+		[CLI_DBG_LVL_INFO]="INFO",
 	};
 	for (int i = 0; i<_error_count; i++){
 		int idx = (_error_head-_error_count + MAX_ERR_MSG) % MAX_ERR_MSG;
@@ -474,7 +472,7 @@ CLI_ERR _handle_input_errors(Cli* state, CLI_ERR err){
 			cli_print(state, error_code_lut[err].desc);
 		}
 		// filter future errors
-		if (error_code_lut[err].lvl < ERR){
+		if (error_code_lut[err].lvl < CLI_DBG_LVL_ERR){
 			err = CLI_ERR_OK;
 		}
 	}

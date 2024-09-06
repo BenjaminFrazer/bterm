@@ -37,10 +37,9 @@ typedef enum {
 //
 
 enum severity {
-	INFO = 0,
-	WARN,
-	ERR,
-	CRIT
+	CLI_DBG_LVL_INFO = 0,
+	CLI_DBG_LVL_WARN,
+	CLI_DBG_LVL_ERR,
 };
 
 struct error_code_lut_row {
