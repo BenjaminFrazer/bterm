@@ -9,20 +9,8 @@ static const char *esc_seq_cursor_right = "\x1B[%dC";
 /** Escape sequence - Cursor backward (left) */
 static const char *esc_seq_cursor_left = "\x1B[%dD";
 
-/** Escape sequence - Cursor down  */
-static const char *esc_seq_cursor_down = "\x1B[B";
-
-/** Escape sequence - Cursor up */
-static const char *esc_seq_cursor_up = "\x1B[A";
-
 /** Escape sequence - Horizontal absolute */
 static const char *esc_seq_cursor_horizontal_n = "\x1B[%dG";
-
-/** Escape sequence - Cursor save position */
-static const char *esc_seq_cursor_save = "\x1B[s";
-
-/** Escape sequence - Cursor restore position */
-static const char *esc_seq_cursor_restore = "\x1B[u";
 
 /** Escape sequence - Cursor insert character (ICH) */
 static const char *esc_seq_insert_char = "\x1B[@";
