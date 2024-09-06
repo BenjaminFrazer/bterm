@@ -132,7 +132,7 @@ CLI_ERR cli_init(Cli *state){
 	/* TODO add some checking here */
 	state->s = NORMAL;
 
-	/* TODO pruge input buffer */
+	/* TODO purge input buffer */
 	return CLI_ERR_OK;
 };
 
@@ -204,8 +204,6 @@ CLI_ERR _insert_char_under_cursor(Cli* state, char c){
 	}
 	state->head++;
 	state->hcursor++;
-	//_move_cursor_horizontal(state, state->hcursor+1);
-	//state->write_data(escSeqInsertChar);
 	return CLI_ERR_OK;
 };
 
@@ -284,7 +282,7 @@ CLI_ERR _handle_ctrl_character(Cli* state, unsigned char c){
 			err = _delete_char_leftof_cursor(state);
 			break;
 		case 9: // tab
-			// TODO autocompletion
+			// TODO auto-completion
 			err = cli_print(state, "Test printing");
 			//err = CLI_ERR_NOT_IMPLEMENTED;
 			break;
@@ -298,8 +296,6 @@ CLI_ERR _handle_ctrl_character(Cli* state, unsigned char c){
 			state->write_data("\n\r");
 			err = _execute_command_buff(state);
 			_reset_prompt(state);
-			//state->write_data("\nnewline");
-			//_execute_command_buff(state);
 			break;
 		case 27: // escape
 			state->s = ESC;
@@ -309,7 +305,7 @@ CLI_ERR _handle_ctrl_character(Cli* state, unsigned char c){
 			err = _delete_char_leftof_cursor(state);
 			break;
 		default: // most control characters won't be handled
-			snprintf(msg, MAX_ERR_MSG_CHARS, "Unkown Control Character: %d", (int)c); 
+			snprintf(msg, MAX_ERR_MSG_CHARS, "Unknown Control Character: %d", (int)c);
 			WARNING(msg);
 			err = CLI_ERR_UNKNOWN_CTL_CHAR;
 			break;
@@ -400,7 +396,6 @@ CLI_ERR _handle_csi_character(Cli* state, char c){
 			break;
 		default: // reset escape sequence state if this is the case
 			if (((int)c>=0x40) && ((int)c<=0x7E)){ 
-				// TODO this should be done with a for loop
 				WARNING(_print_esc_seq(state));
 				err = CLI_ERR_UNKNOWN_CSI_CHAR;
 			}
@@ -464,7 +459,7 @@ void _print_errors(Cli* state){
 
 CLI_ERR _handle_input_errors(Cli* state, CLI_ERR err){
 	/* There may be some errors we wish to handle gracefully rather than raising 
-		* further up the callstack.
+		* further up the call-stack.
 	*/
 	
 	if ((err < CLI_ERR_MAX_ERRORCODE)){
@@ -486,7 +481,6 @@ CLI_ERR _handle_input_errors(Cli* state, CLI_ERR err){
 };
 
 CLI_ERR cli_handle_input(Cli * state){
-	//int capacity = BUFF_MAX_CHARS - state->head;
 	memset(state->inputbuff, 0, sizeof(state->inputbuff)); // clear input buffer
 	int n_read = state->read_data(state->inputbuff, sizeof(state->inputbuff));
 	if (n_read>=0){
