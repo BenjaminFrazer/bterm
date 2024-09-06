@@ -71,7 +71,7 @@ int read_from_stdin(char* data, int n){
 };
 
 Command_Func_t print_hello_cmd;
-int print_hello_cmd(int argc, char* argv[]){
+int print_hello_cmd(Cli* state, int argc, char* argv[]){
 	printf("Hello, world!\n");
 	return CLI_ERR_OK;
 };
