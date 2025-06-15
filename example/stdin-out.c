@@ -72,18 +72,32 @@ int read_from_stdin(char* data, int n){
 
 Command_Func_t print_hello_cmd;
 int print_hello_cmd(Cli* state, int argc, char* argv[]){
-	printf("Hello, world!\n");
-	return CLI_ERR_OK;
+        printf("Hello, world!\n");
+        return CLI_ERR_OK;
+};
+
+Command_Func_t echo2_cmd;
+int echo2_cmd(Cli* state, int argc, char* argv[]){
+        char buff[100];
+        for (int repeat = 0; repeat < 2; repeat++){
+                for (int i = 0; i < argc; i++){
+                        snprintf(buff, sizeof(buff), "%s\r\n", argv[i]);
+                        if (state->write_data(buff) != 0){
+                                return CLI_ERR_WRITE;
+                        }
+                }
+        }
+        return CLI_ERR_OK;
 };
 
 Cli cli = {
 	.debug = CLI_DBG_LVL_INFO,
 	.read_data = &read_from_stdin,
-	.write_data= &write_to_stdout,
-	.commands = {
-		//{.name="ECHO_TEST", .f=&echo_command},
-		{.name="PRINT_HELLO", .f=&print_hello_cmd}
-	}
+        .write_data= &write_to_stdout,
+        .commands = {
+                {.name="ECHO2", .f=&echo2_cmd},
+                {.name="PRINT_HELLO", .f=&print_hello_cmd}
+        }
 };
 
 
