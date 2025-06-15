@@ -21,7 +21,8 @@ static const char *esc_seq_delete_char = "\x1B[P";
 /** Escape sequence - Cursor delete full line */
 static const char *esc_seq_delete_line = "\x1B[2K";
 
-static const char* _find_completion(Cli* state, const char* prefix);
+static int _count_completions(Cli* state, const char* prefix);
+static const char* _nth_completion(Cli* state, const char* prefix, int n);
 static CLI_ERR _complete_buffer(Cli* state);
 
 
@@ -136,6 +137,7 @@ CLI_ERR cli_init(Cli *state){
         state->s = NORMAL;
         state->completing = 0;
         state->completion_head = 0;
+        state->completion_idx = 0;
         memset(state->completion_buff, 0, sizeof(state->completion_buff));
 
         /* TODO purge input buffer */
@@ -276,6 +278,7 @@ void _reset_prompt(Cli* state){
         state->hcursor = 0;
         state->head = 0;
         state->completing = 0;
+        state->completion_idx = 0;
 };
 
 CLI_ERR _handle_ctrl_character(Cli* state, unsigned char c){
@@ -287,6 +290,7 @@ CLI_ERR _handle_ctrl_character(Cli* state, unsigned char c){
 			break;
                 case 8: // backspace
                         state->completing = 0;
+                        state->completion_idx = 0;
                         err = _delete_char_leftof_cursor(state);
                         break;
                 case 9: // tab
@@ -297,21 +301,22 @@ CLI_ERR _handle_ctrl_character(Cli* state, unsigned char c){
                         if(!state->completing){
                                 state->completing = 1;
                                 state->completion_head = state->head;
+                                state->completion_idx = 0;
                                 memcpy(state->completion_buff, state->linebuff,
                                        sizeof(state->linebuff));
-                                err = _complete_buffer(state);
-                        } else {
-                                err = CLI_ERR_OK;
                         }
+                        err = _complete_buffer(state);
                         break;
                 case 10: // line feed (new line)
                         state->completing = 0;
+                        state->completion_idx = 0;
                         state->write_data("\n\r");
                         err = _execute_command_buff(state);
                         _reset_prompt(state);
                         break;
                 case 13: // carriage return
                         state->completing = 0;
+                        state->completion_idx = 0;
                         // do nothing
                         state->write_data("\n\r");
                         err = _execute_command_buff(state);
@@ -331,19 +336,23 @@ CLI_ERR _handle_ctrl_character(Cli* state, unsigned char c){
                                 state->head = state->completion_head;
                                 state->hcursor = state->head;
                                 state->completing = 0;
+                                state->completion_idx = 0;
                                 err = CLI_ERR_OK;
                         } else {
                                 state->completing = 0;
+                                state->completion_idx = 0;
                                 state->s = ESC;
                                 err = CLI_ERR_OK;
                         }
                         break;
                 case 127: // DEL
                         state->completing = 0;
+                        state->completion_idx = 0;
                         err = _delete_char_leftof_cursor(state);
                         break;
                 default: // most control characters won't be handled
                         state->completing = 0;
+                        state->completion_idx = 0;
                         snprintf(msg, MAX_ERR_MSG_CHARS, "Unknown Control Character: %d", (int)c);
                         WARNING(msg);
                         err = CLI_ERR_UNKNOWN_CTL_CHAR;
@@ -354,6 +363,7 @@ CLI_ERR _handle_ctrl_character(Cli* state, unsigned char c){
 
 CLI_ERR _handle_printable_character(Cli* state, char c){
         state->completing = 0;
+        state->completion_idx = 0;
         return _insert_char_under_cursor(state, c);
 };
 
@@ -453,11 +463,12 @@ CLI_ERR _handle_csi_character(Cli* state, char c){
         return err;
 };
 
-static const char* _find_completion(Cli* state, const char* prefix){
+static int _count_completions(Cli* state, const char* prefix){
         size_t plen = strlen(prefix);
+        int count = 0;
         for(int i=0; i<sizeof(_builtin_commands)/sizeof(Command_t); i++){
                 if(strncmp(prefix, _builtin_commands[i].name, plen)==0){
-                        return _builtin_commands[i].name;
+                        count++;
                 }
         }
         for(int i=0; i<MAX_COMMANDS; i++){
@@ -465,25 +476,66 @@ static const char* _find_completion(Cli* state, const char* prefix){
                         continue;
                 }
                 if(strncmp(prefix, state->commands[i].name, plen)==0){
-                        return state->commands[i].name;
+                        count++;
+                }
+        }
+        return count;
+}
+
+static const char* _nth_completion(Cli* state, const char* prefix, int n){
+        size_t plen = strlen(prefix);
+        int count = 0;
+        for(int i=0; i<sizeof(_builtin_commands)/sizeof(Command_t); i++){
+                if(strncmp(prefix, _builtin_commands[i].name, plen)==0){
+                        if(count==n){
+                                return _builtin_commands[i].name;
+                        }
+                        count++;
+                }
+        }
+        for(int i=0; i<MAX_COMMANDS; i++){
+                if(state->commands[i].name[0]=='\0'){
+                        continue;
+                }
+                if(strncmp(prefix, state->commands[i].name, plen)==0){
+                        if(count==n){
+                                return state->commands[i].name;
+                        }
+                        count++;
                 }
         }
         return NULL;
 }
 
 static CLI_ERR _complete_buffer(Cli* state){
-        const char* match = _find_completion(state, state->linebuff);
+        while(state->head > state->completion_head){
+                CLI_ERR e = _delete_char_leftof_cursor(state);
+                if(e!=CLI_ERR_OK){
+                        return e;
+                }
+        }
+        char prefix[BUFF_MAX_CHARS];
+        memcpy(prefix, state->completion_buff, state->completion_head);
+        prefix[state->completion_head] = '\0';
+
+        int total = _count_completions(state, prefix);
+        if(total == 0){
+                return CLI_ERR_OK;
+        }
+        int idx = state->completion_idx % total;
+        const char* match = _nth_completion(state, prefix, idx);
         if(match==NULL){
                 return CLI_ERR_OK;
         }
-        size_t current = state->head;
+
         size_t match_len = strlen(match);
-        for(size_t i=current; i<match_len; i++){
+        for(size_t i=state->completion_head; i<match_len; i++){
                 CLI_ERR e = _insert_char_under_cursor(state, match[i]);
                 if(e!=CLI_ERR_OK){
                         return e;
                 }
         }
+        state->completion_idx = (idx + 1) % total;
         return CLI_ERR_OK;
 }
 

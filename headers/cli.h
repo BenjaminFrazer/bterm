@@ -92,6 +92,7 @@ struct _State {
 /* Tab completion state */
         int completing;
         int completion_head;
+        int completion_idx;
         char completion_buff[BUFF_MAX_CHARS];
 };
 
