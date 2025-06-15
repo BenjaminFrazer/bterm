@@ -84,11 +84,16 @@ struct _State {
 	Read_data_t* read_data;
 	Write_data_t* write_data;
 /* Array of supported commands. */
-	Command_t commands[MAX_COMMANDS];
+        Command_t commands[MAX_COMMANDS];
 /* User customisable hook functions. Set to NULL if not in use. */
-	Hook_fcn_t* on_init_cplt_hook;
-	Hook_fcn_t* pre_command_hook;
-	Hook_fcn_t* post_command_hook;
+        Hook_fcn_t* on_init_cplt_hook;
+        Hook_fcn_t* pre_command_hook;
+        Hook_fcn_t* post_command_hook;
+/* Tab completion state */
+        int completing;
+        int completion_head;
+        int completion_idx;
+        char completion_buff[BUFF_MAX_CHARS];
 };
 
 
