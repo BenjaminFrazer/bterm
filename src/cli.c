@@ -286,6 +286,7 @@ CLI_ERR _handle_ctrl_character(Cli* state, unsigned char c){
 			err = CLI_ERR_NOT_IMPLEMENTED;
 			break;
                 case 8: // backspace
+                        state->completing = 0;
                         err = _delete_char_leftof_cursor(state);
                         break;
                 case 9: // tab
@@ -303,17 +304,19 @@ CLI_ERR _handle_ctrl_character(Cli* state, unsigned char c){
                                 err = CLI_ERR_OK;
                         }
                         break;
-		case 10: // line feed (new line)
-			state->write_data("\n\r");
-			err = _execute_command_buff(state);
-			_reset_prompt(state);
-			break;
-		case 13: // carriage return
-			// do nothing
-			state->write_data("\n\r");
-			err = _execute_command_buff(state);
-			_reset_prompt(state);
-			break;
+                case 10: // line feed (new line)
+                        state->completing = 0;
+                        state->write_data("\n\r");
+                        err = _execute_command_buff(state);
+                        _reset_prompt(state);
+                        break;
+                case 13: // carriage return
+                        state->completing = 0;
+                        // do nothing
+                        state->write_data("\n\r");
+                        err = _execute_command_buff(state);
+                        _reset_prompt(state);
+                        break;
                 case 27: // escape
                         if(state->completing){
                                 while(state->head > state->completion_head){
@@ -330,18 +333,21 @@ CLI_ERR _handle_ctrl_character(Cli* state, unsigned char c){
                                 state->completing = 0;
                                 err = CLI_ERR_OK;
                         } else {
+                                state->completing = 0;
                                 state->s = ESC;
                                 err = CLI_ERR_OK;
                         }
                         break;
-		case 127: // DEL
-			err = _delete_char_leftof_cursor(state);
-			break;
-		default: // most control characters won't be handled
-			snprintf(msg, MAX_ERR_MSG_CHARS, "Unknown Control Character: %d", (int)c);
-			WARNING(msg);
-			err = CLI_ERR_UNKNOWN_CTL_CHAR;
-			break;
+                case 127: // DEL
+                        state->completing = 0;
+                        err = _delete_char_leftof_cursor(state);
+                        break;
+                default: // most control characters won't be handled
+                        state->completing = 0;
+                        snprintf(msg, MAX_ERR_MSG_CHARS, "Unknown Control Character: %d", (int)c);
+                        WARNING(msg);
+                        err = CLI_ERR_UNKNOWN_CTL_CHAR;
+                        break;
 	}
 	return err;
 };
