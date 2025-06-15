@@ -19,7 +19,7 @@ static const char *esq_seq_insert_char = "\x1B[@";
 static const char *esc_seq_delete_char = "\x1B[P";
 
 // Escape sequence - Cursor delete full line
-static const char *esc_seq_delete_line = "\1B[2K";
+static const char *esc_seq_delete_line = "\x1B[2K";
 
 #define MAX_ERR_MSG         10
 #define MAX_ERR_MSG_CHARS   40
