@@ -568,19 +568,21 @@ int _print_err(Cli* state, CLI_ERR err){
 };
 
 void _print_errors(Cli* state){
-	char buff[100];
-	char _err_type_lut[][5] = {
-		[CLI_DBG_LVL_ERR]="ERR",
-		[CLI_DBG_LVL_WARN]="WARN",
-		[CLI_DBG_LVL_INFO]="INFO",
-	};
-	for (int i = 0; i<_error_count; i++){
-		int idx = (_error_head-_error_count + MAX_ERR_MSG) % MAX_ERR_MSG;
-		struct error_msg e = _error_msg_table[idx];
-		snprintf(buff, sizeof(buff), "[%5s] %10s:%4d - %.40s", _err_type_lut[e.type], e.file, e.line, e.msg);
-		cli_print(state, buff);
-		_error_count--;
-	}
+        char buff[100];
+        char _err_type_lut[][5] = {
+                [CLI_DBG_LVL_ERR]="ERR",
+                [CLI_DBG_LVL_WARN]="WARN",
+                [CLI_DBG_LVL_INFO]="INFO",
+        };
+        int count = _error_count;
+        int start = (_error_head - count + MAX_ERR_MSG) % MAX_ERR_MSG;
+        for (int i = 0; i < count; i++){
+                int idx = (start + i) % MAX_ERR_MSG;
+                struct error_msg e = _error_msg_table[idx];
+                snprintf(buff, sizeof(buff), "[%5s] %10s:%4d - %.40s", _err_type_lut[e.type], e.file, e.line, e.msg);
+                cli_print(state, buff);
+        }
+        _error_count = 0;
 };
 
 CLI_ERR _handle_input_errors(Cli* state, CLI_ERR err){
