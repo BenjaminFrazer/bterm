@@ -64,7 +64,7 @@ const struct error_code_lut_row error_code_lut[] = {
 	CLI_ERR_DESC(CLI_DBG_LVL_ERR, NOT_IMPLEMENTED),
 	CLI_ERR_DESC(CLI_DBG_LVL_WARN, INVALID_COMMAND),
 	CLI_ERR_DESC(CLI_DBG_LVL_ERR, USER_CMD_FAILED),
-	CLI_ERR_DESC(CLI_DBG_LVL_WARN, UNKOWN_ESCAPED_CHAR),
+       CLI_ERR_DESC(CLI_DBG_LVL_WARN, UNKNOWN_ESCAPED_CHAR),
 	CLI_ERR_DESC(CLI_DBG_LVL_ERR, READ),
 	CLI_ERR_DESC(CLI_DBG_LVL_ERR, WRITE),
 	CLI_ERR_DESC(CLI_DBG_LVL_WARN, BUFFER_OVERFLOW),
@@ -75,7 +75,7 @@ const struct error_code_lut_row error_code_lut[] = {
 	CLI_ERR_DESC(CLI_DBG_LVL_WARN, UNKNOWN_SEQ_STATE),
 	CLI_ERR_DESC(CLI_DBG_LVL_WARN, UNKNOWN_CSI_CHAR),
 	CLI_ERR_DESC(CLI_DBG_LVL_ERR, HANDLE_KEYCODE),
-	CLI_ERR_DESC(CLI_DBG_LVL_WARN, UNKOWN_KEYCODE),
+       CLI_ERR_DESC(CLI_DBG_LVL_WARN, UNKNOWN_KEYCODE),
 	CLI_ERR_DESC(CLI_DBG_LVL_ERR, ESC_SEQ_BUFF_OVERFLOW),
 	CLI_ERR_DESC(CLI_DBG_LVL_ERR, MAX_ERRORCODE),
 };
@@ -387,8 +387,8 @@ CLI_ERR _handle_esc_character(Cli* state, char c){
 			state->s = CSI;
 			err = CLI_ERR_OK;
 			break;
-		default:
-			err = CLI_ERR_UNKOWN_ESCAPED_CHAR;
+               default:
+                       err = CLI_ERR_UNKNOWN_ESCAPED_CHAR;
 	}
 	return err;
 };
@@ -404,9 +404,9 @@ CLI_ERR _handle_keycode_sequence(Cli* state){
 		case 3: // Delete
 			err = _delete_char_leftof_cursor(state);
 			break;
-		default:
-			err = CLI_ERR_UNKOWN_KEYCODE;
-			break;
+               default:
+                       err = CLI_ERR_UNKNOWN_KEYCODE;
+                       break;
 	}
 	return err;
 };
