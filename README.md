@@ -110,18 +110,74 @@ All functions return `CLI_ERR` enum values:
 
 ## Examples
 
-See the `example/` directory for a complete working example using standard I/O:
+### Host Test Application (`example/stdin-out.c`)
+
+The repository includes a fully functional test application that demonstrates how to integrate the bterm library with a standard Unix/Linux terminal. This example is particularly useful for testing and development on host systems before deploying to embedded targets.
+
+#### Building and Running
 
 ```bash
 make examples
 ./example/stdin-out.out
 ```
 
-The example demonstrates:
-- Terminal raw mode setup
-- Signal handling (Ctrl+C)
-- Custom command registration
-- Error handling
+#### Key Features Demonstrated
+
+1. **Terminal Raw Mode Configuration**
+   - Uses `termios` to set the terminal to raw mode (disables line buffering and echo)
+   - Automatically saves and restores terminal settings on exit
+   - Ensures proper cleanup even on abnormal termination
+
+2. **Signal Handling**
+   - Captures SIGINT (Ctrl+C) for graceful shutdown
+   - Demonstrates how to cleanly exit the CLI loop
+
+3. **I/O Implementation**
+   - `read_from_stdin()`: Reads single characters from standard input
+   - `write_to_stdout()`: Writes strings to standard output using printf
+   - Shows the minimal I/O interface required by bterm
+
+4. **Custom Commands**
+   - **PRINT_HELLO**: Simple command that prints "Hello, world!"
+   - **ECHO2**: Enhanced echo that repeats arguments twice
+   - Both commands demonstrate proper error handling and return codes
+
+5. **Error Handling and Reporting**
+   - Shows how to catch and display CLI errors using `cli_print()`
+   - Demonstrates error recovery by resetting error state
+   - Uses the built-in error description lookup table
+
+#### Usage Example
+
+When you run the application:
+```
+$ ./example/stdin-out.out
+Starting CLI Demo...
+> PRINT_HELLO
+Hello, world!
+> ECHO2 test message
+test
+message
+test
+message
+> [Use arrow keys for cursor movement, tab for completion]
+> [Press Ctrl+C to exit]
+```
+
+#### Code Structure
+
+The example follows this pattern:
+1. Configure terminal for raw input (character-by-character processing)
+2. Set up signal handler for clean shutdown
+3. Initialize CLI with I/O functions and command list
+4. Enter main loop calling `cli_handle_input()`
+5. Handle any errors and continue processing
+
+This example serves as an excellent starting point for:
+- Testing bterm features on development machines
+- Creating terminal-based tools and utilities
+- Understanding the library's behavior before embedded deployment
+- Debugging custom commands in a familiar environment
 
 ## Building
 
