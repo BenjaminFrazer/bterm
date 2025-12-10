@@ -25,6 +25,12 @@ static int _count_completions(Cli* state, const char* prefix);
 static const char* _nth_completion(Cli* state, const char* prefix, int n);
 static CLI_ERR _complete_buffer(Cli* state);
 
+#ifdef CLI_ENABLE_HISTORY
+static void _add_to_history(Cli* state, const char* line);
+static CLI_ERR _replace_line_with_text(Cli* state, const char* text);
+static CLI_ERR _exit_history_navigation(Cli* state);
+#endif
+
 
 #define MAX_ERR_MSG 10
 #define MAX_ERR_MSG_CHARS 40
@@ -149,6 +155,16 @@ CLI_ERR cli_init(Cli *state){
         memset(state->linebuff, 0, sizeof(state->linebuff));
         memset(state->escape_buff, 0, sizeof(state->escape_buff));
         memset(state->inputbuff, 0, sizeof(state->inputbuff));
+
+#ifdef CLI_ENABLE_HISTORY
+        state->history_write_head = 0;
+        state->history_count = 0;
+        state->history_nav_pos = -1;
+        state->history_temp_cursor = 0;
+        state->history_temp_head = 0;
+        memset(state->history_buffer, 0, sizeof(state->history_buffer));
+        memset(state->history_temp_line, 0, sizeof(state->history_temp_line));
+#endif
 
         return CLI_ERR_OK;
 };
@@ -306,6 +322,9 @@ CLI_ERR _handle_ctrl_character(Cli* state, unsigned char c){
                 case 8: // backspace
                         state->completing = 0;
                         state->completion_idx = 0;
+#ifdef CLI_ENABLE_HISTORY
+                        _exit_history_navigation(state);
+#endif
                         err = _delete_char_leftof_cursor(state);
                         break;
                 case 9: // tab
@@ -313,6 +332,9 @@ CLI_ERR _handle_ctrl_character(Cli* state, unsigned char c){
                                 err = CLI_ERR_OK;
                                 break;
                         }
+#ifdef CLI_ENABLE_HISTORY
+                        _exit_history_navigation(state);
+#endif
                         if(!state->completing){
                                 state->completing = 1;
                                 state->completion_head = state->head;
@@ -329,7 +351,13 @@ CLI_ERR _handle_ctrl_character(Cli* state, unsigned char c){
                                 err = CLI_ERR_WRITE;
                                 break;
                         }
+#ifdef CLI_ENABLE_HISTORY
+                        _add_to_history(state, state->linebuff);
+#endif
                         err = _execute_command_buff(state);
+#ifdef CLI_ENABLE_HISTORY
+                        _exit_history_navigation(state);
+#endif
                         _reset_prompt(state);
                         break;
                 case 13: // carriage return
@@ -339,7 +367,13 @@ CLI_ERR _handle_ctrl_character(Cli* state, unsigned char c){
                                 err = CLI_ERR_WRITE;
                                 break;
                         }
+#ifdef CLI_ENABLE_HISTORY
+                        _add_to_history(state, state->linebuff);
+#endif
                         err = _execute_command_buff(state);
+#ifdef CLI_ENABLE_HISTORY
+                        _exit_history_navigation(state);
+#endif
                         _reset_prompt(state);
                         break;
                 case 27: // escape
@@ -368,6 +402,9 @@ CLI_ERR _handle_ctrl_character(Cli* state, unsigned char c){
                 case 127: // DEL
                         state->completing = 0;
                         state->completion_idx = 0;
+#ifdef CLI_ENABLE_HISTORY
+                        _exit_history_navigation(state);
+#endif
                         err = _delete_char_leftof_cursor(state);
                         break;
                 default: // most control characters won't be handled
@@ -384,12 +421,143 @@ CLI_ERR _handle_ctrl_character(Cli* state, unsigned char c){
 CLI_ERR _handle_printable_character(Cli* state, char c){
         state->completing = 0;
         state->completion_idx = 0;
+#ifdef CLI_ENABLE_HISTORY
+        _exit_history_navigation(state);
+#endif
         return _insert_char_under_cursor(state, c);
 };
 
-CLI_ERR _navigate_history(Cli* state, int dir){
+#ifdef CLI_ENABLE_HISTORY
+static void _add_to_history(Cli* state, const char* line){
+	/* Skip empty lines */
+	#if HISTORY_IGNORE_EMPTY
+	if (line[0] == '\0'){
+		return;
+	}
+	#endif
 
+	/* Skip consecutive duplicates */
+	#if HISTORY_IGNORE_CONSECUTIVE_DUPES
+	if (state->history_count > 0){
+		int last_idx = (state->history_write_head - 1 + MAX_HISTORY_ENTRIES) % MAX_HISTORY_ENTRIES;
+		if (strcmp(state->history_buffer[last_idx], line) == 0){
+			return;
+		}
+	}
+	#endif
+
+	/* Add to circular buffer */
+	strncpy(state->history_buffer[state->history_write_head], line, BUFF_MAX_CHARS - 1);
+	state->history_buffer[state->history_write_head][BUFF_MAX_CHARS - 1] = '\0';
+
+	state->history_write_head = (state->history_write_head + 1) % MAX_HISTORY_ENTRIES;
+
+	if (state->history_count < MAX_HISTORY_ENTRIES){
+		state->history_count++;
+	}
+}
+
+static CLI_ERR _replace_line_with_text(Cli* state, const char* text){
+	/* Move cursor to beginning */
+	while (state->hcursor > 0){
+		CLI_ERR err = _move_cursor_horizontal(state, -1);
+		if (err != CLI_ERR_OK){
+			return err;
+		}
+	}
+
+	/* Clear entire line */
+	if (state->write_data(esc_seq_delete_line) != 0){
+		return CLI_ERR_WRITE;
+	}
+
+	/* Reset buffers */
+	memset(state->linebuff, 0, sizeof(state->linebuff));
+	state->head = 0;
+	state->hcursor = 0;
+
+	/* Insert new text character by character */
+	for (int i = 0; text[i] != '\0' && i < BUFF_MAX_CHARS - 1; i++){
+		CLI_ERR err = _insert_char_under_cursor(state, text[i]);
+		if (err != CLI_ERR_OK){
+			return err;
+		}
+	}
+
+	return CLI_ERR_OK;
+}
+
+static CLI_ERR _exit_history_navigation(Cli* state){
+	if (state->history_nav_pos == -1){
+		return CLI_ERR_OK; // not navigating
+	}
+
+	state->history_nav_pos = -1;
+	return CLI_ERR_OK;
+}
+#endif
+
+CLI_ERR _navigate_history(Cli* state, int dir){
+#ifdef CLI_ENABLE_HISTORY
+	/* dir > 0: go back (older), dir < 0: go forward (newer) */
+
+	/* If history is empty, do nothing */
+	if (state->history_count == 0){
+		return CLI_ERR_OK;
+	}
+
+	/* Going forward when not navigating - do nothing */
+	if (dir < 0 && state->history_nav_pos == -1){
+		return CLI_ERR_OK;
+	}
+
+	/* First time navigating - save current line */
+	if (state->history_nav_pos == -1){
+		strncpy(state->history_temp_line, state->linebuff, BUFF_MAX_CHARS - 1);
+		state->history_temp_line[BUFF_MAX_CHARS - 1] = '\0';
+		state->history_temp_cursor = state->hcursor;
+		state->history_temp_head = state->head;
+
+		/* Start at most recent entry */
+		state->history_nav_pos = (state->history_write_head - 1 + MAX_HISTORY_ENTRIES) % MAX_HISTORY_ENTRIES;
+
+		return _replace_line_with_text(state, state->history_buffer[state->history_nav_pos]);
+	}
+
+	/* Already navigating */
+	if (dir > 0){
+		/* Go back (older) */
+		int oldest_idx;
+		if (state->history_count < MAX_HISTORY_ENTRIES){
+			oldest_idx = 0;
+		} else {
+			oldest_idx = state->history_write_head;
+		}
+
+		/* Check if at oldest */
+		if (state->history_nav_pos == oldest_idx){
+			return CLI_ERR_OK; // stay at oldest
+		}
+
+		state->history_nav_pos = (state->history_nav_pos - 1 + MAX_HISTORY_ENTRIES) % MAX_HISTORY_ENTRIES;
+		return _replace_line_with_text(state, state->history_buffer[state->history_nav_pos]);
+	} else {
+		/* Go forward (newer) */
+		int next_pos = (state->history_nav_pos + 1) % MAX_HISTORY_ENTRIES;
+		int most_recent_idx = (state->history_write_head - 1 + MAX_HISTORY_ENTRIES) % MAX_HISTORY_ENTRIES;
+
+		/* Check if we're at the most recent - restore temp buffer */
+		if (state->history_nav_pos == most_recent_idx){
+			state->history_nav_pos = -1;
+			return _replace_line_with_text(state, state->history_temp_line);
+		}
+
+		state->history_nav_pos = next_pos;
+		return _replace_line_with_text(state, state->history_buffer[state->history_nav_pos]);
+	}
+#else
 	return CLI_ERR_NOT_IMPLEMENTED;
+#endif
 };
 
 CLI_ERR _handle_esc_character(Cli* state, char c){

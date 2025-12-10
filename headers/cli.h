@@ -9,6 +9,12 @@
 #define MAX_ERRORCODE_DESC 24
 #define MAX_TOKENISATION_ATTEMPTS (MAX_ARGS+2)
 
+/* History configuration */
+#define CLI_ENABLE_HISTORY              // Comment to disable
+#define MAX_HISTORY_ENTRIES 10          // Number of commands to remember
+#define HISTORY_IGNORE_EMPTY 1          // Don't save empty commands
+#define HISTORY_IGNORE_CONSECUTIVE_DUPES 1  // Skip if same as last
+
 /* Forward declaration of state struct. */
 typedef struct _State Cli; 
 
@@ -94,6 +100,16 @@ struct _State {
         int completion_head;
         int completion_idx;
         char completion_buff[BUFF_MAX_CHARS];
+/* Command history */
+#ifdef CLI_ENABLE_HISTORY
+        char history_buffer[MAX_HISTORY_ENTRIES][BUFF_MAX_CHARS];
+        char history_temp_line[BUFF_MAX_CHARS];  // saved partial input
+        int history_write_head;   // next slot to write (0 to MAX-1)
+        int history_count;        // entries stored (0 to MAX)
+        int history_nav_pos;      // navigation position (-1 = not navigating)
+        int history_temp_cursor;  // saved cursor position
+        int history_temp_head;    // saved head position
+#endif
 };
 
 
