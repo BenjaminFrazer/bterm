@@ -7,12 +7,14 @@ A minimal, portable command-line interface (CLI) library written in C, designed 
 - **Lightweight and Portable**: Written in pure C with minimal dependencies
 - **Command Registration System**: Easy registration of custom commands with function callbacks
 - **Line Editing Support**: Full cursor movement, character insertion/deletion via escape sequences
+- **Command History**: Circular buffer with up/down arrow navigation (optional, ~1.2KB)
 - **Tab Completion**: Built-in support for command name completion
 - **Error Handling**: Comprehensive error codes with severity levels (INFO, WARN, ERR)
 - **Customizable I/O**: Flexible read/write function pointers for various I/O backends (UART, USB, stdio)
 - **Hook System**: Pre/post command hooks and initialization callbacks
 - **Buffer Management**: Configurable buffer sizes for commands, arguments, and input
 - **Escape Sequence Handling**: Proper handling of terminal control sequences (arrow keys, delete, etc.)
+- **Security Hardened**: Buffer overflow protection with bounds checking and input validation
 
 ## Installation
 
@@ -202,6 +204,12 @@ Key configuration defines in `cli.h`:
 #define MAX_COMMANDS 100        // Maximum registered commands
 #define MAX_ARGS 10            // Maximum arguments per command
 #define BUFF_MAX_CHARS 100     // Line buffer size
+
+// Command History (optional)
+#define CLI_ENABLE_HISTORY              // Comment to disable history
+#define MAX_HISTORY_ENTRIES 10          // Number of commands to remember
+#define HISTORY_IGNORE_EMPTY 1          // Skip empty commands
+#define HISTORY_IGNORE_CONSECUTIVE_DUPES 1  // Skip consecutive duplicates
 ```
 
 ## Platform Support

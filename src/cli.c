@@ -578,6 +578,8 @@ CLI_ERR _handle_esc_character(Cli* state, char c){
 			err = CLI_ERR_OK;
 			break;
                default:
+                       state->s = NORMAL;
+                       state->escbuff_head = 0;
                        err = CLI_ERR_UNKNOWN_ESCAPED_CHAR;
 	}
 	return err;
@@ -609,6 +611,7 @@ CLI_ERR _handle_csi_character(Cli* state, char c){
 		_print_esc_seq(state, msg, sizeof(msg));
 		ERROR(msg);
 		state->s = NORMAL;
+		state->escbuff_head = 0;
 		return CLI_ERR_ESC_SEQ_BUFF_OVERFLOW;
 	}
 	state->escape_buff[state->escbuff_head] = c;
