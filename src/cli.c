@@ -31,6 +31,10 @@ static CLI_ERR _replace_line_with_text(Cli* state, const char* text);
 static CLI_ERR _exit_history_navigation(Cli* state);
 #endif
 
+/* Forward declarations */
+Command_Func_t help;
+Command_Func_t echo;
+
 
 #define MAX_ERR_MSG 10
 #define MAX_ERR_MSG_CHARS 40
@@ -120,7 +124,6 @@ CLI_ERR cli_print(Cli* state, const char* msg){
 	return CLI_ERR_OK;
 };
 
-Command_Func_t echo;
 int echo(Cli* state, int argn, char* argv[]){
 	char buff[100];
 	for (int i=0; i<argn; i++){
@@ -130,11 +133,88 @@ int echo(Cli* state, int argn, char* argv[]){
 		}
 	}
 	return 0;
-};
+}
 
 Command_t _builtin_commands[] = {
-	{.f = &echo, .name="echo"}
+	{.name="help", .desc="Display available commands and usage info", .f=&help},
+	{.name="echo", .desc="Print arguments to output", .f=&echo}
 };
+
+int help(Cli* state, int argn, char* argv[]){
+	char buff[100];
+
+	if (argn > 1){
+		/* Show help for specific command */
+		const char* cmdname = argv[1];
+		Command_t* found = NULL;
+
+		/* Search builtin commands */
+		for (int i=0; i<sizeof(_builtin_commands)/sizeof(Command_t); i++){
+			if (strcmp(cmdname, _builtin_commands[i].name)==0){
+				found = &_builtin_commands[i];
+				break;
+			}
+		}
+
+		/* Search user commands */
+		if (found == NULL){
+			for (int i=0; i<MAX_COMMANDS; i++){
+				if (state->commands[i].name[0] == '\0'){
+					break;
+				}
+				if (strcmp(cmdname, state->commands[i].name)==0){
+					found = &state->commands[i];
+					break;
+				}
+			}
+		}
+
+		if (found != NULL){
+			snprintf(buff, sizeof(buff), "%s: %s\r\n", found->name, found->desc);
+			if (state->write_data(buff) !=0){
+				return -1;
+			}
+		} else {
+			snprintf(buff, sizeof(buff), "Command '%s' not found\r\n", cmdname);
+			if (state->write_data(buff) !=0){
+				return -1;
+			}
+		}
+		return 0;
+	}
+
+	/* List all commands */
+	if (state->write_data("Available commands:\r\n") !=0){
+		return -1;
+	}
+
+	/* List builtin commands */
+	for (int i=0; i<sizeof(_builtin_commands)/sizeof(Command_t); i++){
+		snprintf(buff, sizeof(buff), "  %-15s %s\r\n",
+			_builtin_commands[i].name, _builtin_commands[i].desc);
+		if (state->write_data(buff) !=0){
+			return -1;
+		}
+	}
+
+	/* List user commands */
+	for (int i=0; i<MAX_COMMANDS; i++){
+		if (state->commands[i].name[0] == '\0'){
+			break;
+		}
+		snprintf(buff, sizeof(buff), "  %-15s %s\r\n",
+			state->commands[i].name, state->commands[i].desc);
+		if (state->write_data(buff) !=0){
+			return -1;
+		}
+	}
+
+	if (state->write_data("\r\nUse 'help <command>' for more info\r\n") !=0){
+		return -1;
+	}
+
+	return 0;
+}
 
 CLI_ERR cli_init(Cli *state){
         if (state == NULL) {

@@ -68,8 +68,8 @@ Cli cli = {
     .read_data = &my_read,
     .write_data = &my_write,
     .commands = {
-        {.name = "hello", .f = &hello_cmd},
-        {.name = "", .f = NULL}  // Terminator
+        {.name = "hello", .desc = "Print a greeting", .f = &hello_cmd},
+        {.name = "", .desc = "", .f = NULL}  // Terminator
     }
 };
 

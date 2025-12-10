@@ -9,8 +9,8 @@
 #define MAX_ERRORCODE_DESC 24
 #define MAX_TOKENISATION_ATTEMPTS (MAX_ARGS+2)
 
-/* History configuration */
-#define CLI_ENABLE_HISTORY              // Comment to disable
+/* History configuration (enabled by default) */
+#define CLI_ENABLE_HISTORY              // Comment out to disable (~1.2KB savings)
 #define MAX_HISTORY_ENTRIES 10          // Number of commands to remember
 #define HISTORY_IGNORE_EMPTY 1          // Don't save empty commands
 #define HISTORY_IGNORE_CONSECUTIVE_DUPES 1  // Skip if same as last
@@ -66,6 +66,7 @@ typedef CLI_ERR (Hook_fcn_t)(Cli* state);
 typedef struct Command_t {
 /* User customisable hook functions. */
 	char name[20];
+	char desc[60];
 	Command_Func_t* f;
 } Command_t;
 

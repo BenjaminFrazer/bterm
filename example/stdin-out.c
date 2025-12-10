@@ -95,8 +95,8 @@ Cli cli = {
 	.read_data = &read_from_stdin,
         .write_data= &write_to_stdout,
         .commands = {
-                {.name="ECHO2", .f=&echo2_cmd},
-                {.name="PRINT_HELLO", .f=&print_hello_cmd}
+                {.name="ECHO2", .desc="Echo arguments twice", .f=&echo2_cmd},
+                {.name="PRINT_HELLO", .desc="Print a hello message", .f=&print_hello_cmd}
         }
 };
 
