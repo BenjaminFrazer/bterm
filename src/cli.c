@@ -57,38 +57,36 @@ void _error_message(const char* msg, const char* file, int line, enum severity t
 
 #define WARNING(msg) _error_message(msg, __FILE__, __LINE__, CLI_DBG_LVL_WARN)
 #define ERROR(msg) _error_message(msg, __FILE__, __LINE__, CLI_DBG_LVL_ERR)
-#define CLI_ERR_DESC(sev, ec) [CLI_ERR ## _ ## ec] = {.desc={#ec}, .lvl=sev}
+#define CLI_ERR_DESC(sev, ec) {.desc={#ec}, .lvl=sev}
 
 const struct error_code_lut_row error_code_lut[] = {
-	CLI_ERR_DESC(CLI_DBG_LVL_INFO, OK),
-	CLI_ERR_DESC(CLI_DBG_LVL_ERR, NOT_IMPLEMENTED),
-	CLI_ERR_DESC(CLI_DBG_LVL_WARN, INVALID_COMMAND),
-	CLI_ERR_DESC(CLI_DBG_LVL_ERR, USER_CMD_FAILED),
-       CLI_ERR_DESC(CLI_DBG_LVL_WARN, UNKNOWN_ESCAPED_CHAR),
-	CLI_ERR_DESC(CLI_DBG_LVL_ERR, READ),
-	CLI_ERR_DESC(CLI_DBG_LVL_ERR, WRITE),
-	CLI_ERR_DESC(CLI_DBG_LVL_WARN, BUFFER_OVERFLOW),
-	CLI_ERR_DESC(CLI_DBG_LVL_WARN, DEV_NOT_INITIALISED),
-	CLI_ERR_DESC(CLI_DBG_LVL_INFO, CURSOR_EXCEEDS_BOUNDS),
-	CLI_ERR_DESC(CLI_DBG_LVL_INFO, CANNOT_DELETE),
-	CLI_ERR_DESC(CLI_DBG_LVL_WARN, UNKNOWN_CTL_CHAR),
-	CLI_ERR_DESC(CLI_DBG_LVL_WARN, UNKNOWN_SEQ_STATE),
-	CLI_ERR_DESC(CLI_DBG_LVL_WARN, UNKNOWN_CSI_CHAR),
-	CLI_ERR_DESC(CLI_DBG_LVL_ERR, HANDLE_KEYCODE),
-       CLI_ERR_DESC(CLI_DBG_LVL_WARN, UNKNOWN_KEYCODE),
-	CLI_ERR_DESC(CLI_DBG_LVL_ERR, ESC_SEQ_BUFF_OVERFLOW),
-	CLI_ERR_DESC(CLI_DBG_LVL_ERR, MAX_ERRORCODE),
+	[CLI_ERR_OK] = CLI_ERR_DESC(CLI_DBG_LVL_INFO, OK),
+	[CLI_ERR_NOT_IMPLEMENTED] = CLI_ERR_DESC(CLI_DBG_LVL_ERR, NOT_IMPLEMENTED),
+	[CLI_ERR_INVALID_COMMAND] = CLI_ERR_DESC(CLI_DBG_LVL_WARN, INVALID_COMMAND),
+	[CLI_ERR_USER_CMD_FAILED] = CLI_ERR_DESC(CLI_DBG_LVL_ERR, USER_CMD_FAILED),
+	[CLI_ERR_READ] = CLI_ERR_DESC(CLI_DBG_LVL_ERR, READ),
+	[CLI_ERR_UNKNOWN_ESCAPED_CHAR] = CLI_ERR_DESC(CLI_DBG_LVL_WARN, UNKNOWN_ESCAPED_CHAR),
+	[CLI_ERR_UNKNOWN_CSI_CHAR] = CLI_ERR_DESC(CLI_DBG_LVL_WARN, UNKNOWN_CSI_CHAR),
+	[CLI_ERR_WRITE] = CLI_ERR_DESC(CLI_DBG_LVL_ERR, WRITE),
+	[CLI_ERR_BUFFER_OVERFLOW] = CLI_ERR_DESC(CLI_DBG_LVL_WARN, BUFFER_OVERFLOW),
+	[CLI_ERR_DEV_NOT_INITIALISED] = CLI_ERR_DESC(CLI_DBG_LVL_WARN, DEV_NOT_INITIALISED),
+	[CLI_ERR_CURSOR_EXCEEDS_BOUNDS] = CLI_ERR_DESC(CLI_DBG_LVL_INFO, CURSOR_EXCEEDS_BOUNDS),
+	[CLI_ERR_CANNOT_DELETE] = CLI_ERR_DESC(CLI_DBG_LVL_INFO, CANNOT_DELETE),
+	[CLI_ERR_UNKNOWN_CTL_CHAR] = CLI_ERR_DESC(CLI_DBG_LVL_WARN, UNKNOWN_CTL_CHAR),
+	[CLI_ERR_UNKNOWN_SEQ_STATE] = CLI_ERR_DESC(CLI_DBG_LVL_WARN, UNKNOWN_SEQ_STATE),
+	[CLI_ERR_HANDLE_KEYCODE] = CLI_ERR_DESC(CLI_DBG_LVL_ERR, HANDLE_KEYCODE),
+	[CLI_ERR_UNKNOWN_KEYCODE] = CLI_ERR_DESC(CLI_DBG_LVL_WARN, UNKNOWN_KEYCODE),
+	[CLI_ERR_ESC_SEQ_BUFF_OVERFLOW] = CLI_ERR_DESC(CLI_DBG_LVL_ERR, ESC_SEQ_BUFF_OVERFLOW),
+	[CLI_ERR_MAX_ERRORCODE] = CLI_ERR_DESC(CLI_DBG_LVL_ERR, MAX_ERRORCODE),
 };
 
 
-char* _print_esc_seq(Cli* state){
-	static char msg[MAX_ERR_MSG_CHARS];
-				snprintf(msg, MAX_ERR_MSG_CHARS, "seq: %d-%d-%d-%d",
-						 state->escape_buff[0],
-						 state->escape_buff[1],
-						 state->escape_buff[2],
-						 state->escape_buff[3]);
-	return &msg[0];
+void _print_esc_seq(Cli* state, char* msg, size_t msg_size){
+	snprintf(msg, msg_size, "seq: %d-%d-%d-%d",
+		 state->escape_buff[0],
+		 state->escape_buff[1],
+		 state->escape_buff[2],
+		 state->escape_buff[3]);
 };
 
 CLI_ERR cli_print(Cli* state, const char* msg){
@@ -133,14 +131,25 @@ Command_t _builtin_commands[] = {
 };
 
 CLI_ERR cli_init(Cli *state){
-        /* TODO add some checking here */
+        if (state == NULL) {
+                return CLI_ERR_DEV_NOT_INITIALISED;
+        }
+        if (state->read_data == NULL || state->write_data == NULL) {
+                return CLI_ERR_DEV_NOT_INITIALISED;
+        }
+
         state->s = NORMAL;
         state->completing = 0;
         state->completion_head = 0;
         state->completion_idx = 0;
+        state->head = 0;
+        state->hcursor = 0;
+        state->escbuff_head = 0;
         memset(state->completion_buff, 0, sizeof(state->completion_buff));
+        memset(state->linebuff, 0, sizeof(state->linebuff));
+        memset(state->escape_buff, 0, sizeof(state->escape_buff));
+        memset(state->inputbuff, 0, sizeof(state->inputbuff));
 
-        /* TODO purge input buffer */
         return CLI_ERR_OK;
 };
 
@@ -162,11 +171,11 @@ CLI_ERR _move_cursor_horizontal(Cli* state, int n){
 	}
 	/* Truncate cursor position */
 	if (n>0){ // move right
-		sprintf(buff, esc_seq_cursor_right, n); 
+		snprintf(buff, sizeof(buff), esc_seq_cursor_right, n);
 
 	}
 	else { // move left
-		sprintf(buff, esc_seq_cursor_left, -n); 
+		snprintf(buff, sizeof(buff), esc_seq_cursor_left, -n);
 		}
 	if (state->write_data(buff)!=0){
 			return CLI_ERR_WRITE;
@@ -205,7 +214,9 @@ CLI_ERR _insert_char_under_cursor(Cli* state, char c){
 	memmove(&state->linebuff[state->hcursor+1], &state->linebuff[state->hcursor], tail);
 	state->linebuff[state->hcursor] = c;
 	if(state->head != state->hcursor){
-		state->write_data(esc_seq_insert_char);
+		if (state->write_data(esc_seq_insert_char)!=0){
+			return CLI_ERR_WRITE;
+		}
 	}
 	if (state->write_data(buff)!=0){
 			return CLI_ERR_WRITE;
@@ -217,7 +228,7 @@ CLI_ERR _insert_char_under_cursor(Cli* state, char c){
 
 
 
-Command_Func_t* _match_cmd(Cli * state, char* cmdname){
+Command_Func_t* _match_cmd(Cli * state, const char* cmdname){
 	/* Match against built-in commands */
 	if (cmdname == NULL){
 		return NULL;
@@ -232,6 +243,10 @@ Command_Func_t* _match_cmd(Cli * state, char* cmdname){
 	};
 	/* Match against user commands */
 	for (int i=0; i<MAX_COMMANDS; i++){
+		/* Check for empty command slot (end of command list) */
+		if (state->commands[i].name[0] == '\0'){
+			break;
+		}
 		if (strcmp(cmdname, state->commands[i].name)==0){
 			return state->commands[i].f;
 		}
@@ -310,15 +325,20 @@ CLI_ERR _handle_ctrl_character(Cli* state, unsigned char c){
                 case 10: // line feed (new line)
                         state->completing = 0;
                         state->completion_idx = 0;
-                        state->write_data("\n\r");
+                        if (state->write_data("\n\r")!=0){
+                                err = CLI_ERR_WRITE;
+                                break;
+                        }
                         err = _execute_command_buff(state);
                         _reset_prompt(state);
                         break;
                 case 13: // carriage return
                         state->completing = 0;
                         state->completion_idx = 0;
-                        // do nothing
-                        state->write_data("\n\r");
+                        if (state->write_data("\n\r")!=0){
+                                err = CLI_ERR_WRITE;
+                                break;
+                        }
                         err = _execute_command_buff(state);
                         _reset_prompt(state);
                         break;
@@ -375,7 +395,9 @@ CLI_ERR _navigate_history(Cli* state, int dir){
 CLI_ERR _handle_esc_character(Cli* state, char c){
 	CLI_ERR err;
 	if (state->escbuff_head >= sizeof(state->escape_buff)){
-		ERROR(_print_esc_seq(state));
+		char msg[MAX_ERR_MSG_CHARS];
+		_print_esc_seq(state, msg, sizeof(msg));
+		ERROR(msg);
 		state->s = NORMAL;
 		state->escbuff_head= 0;
 		return CLI_ERR_ESC_SEQ_BUFF_OVERFLOW;
@@ -415,7 +437,9 @@ CLI_ERR _handle_keycode_sequence(Cli* state){
 CLI_ERR _handle_csi_character(Cli* state, char c){
 	CLI_ERR err;
 	if (state->escbuff_head >= sizeof(state->escape_buff)){
-		ERROR(_print_esc_seq(state));
+		char msg[MAX_ERR_MSG_CHARS];
+		_print_esc_seq(state, msg, sizeof(msg));
+		ERROR(msg);
 		state->s = NORMAL;
 		return CLI_ERR_ESC_SEQ_BUFF_OVERFLOW;
 	}
@@ -441,12 +465,14 @@ CLI_ERR _handle_csi_character(Cli* state, char c){
 		case '0' ... '9': // parameter byte
 			err = CLI_ERR_OK;
 			char buff[2];
-			sprintf(buff, "%c", c);
+			snprintf(buff, sizeof(buff), "%c", c);
 			state->escape_char_numeric_val=atoi(buff);
 			break;
                default: // reset escape sequence state if this is the case
                         if (((int)c>=0x40) && ((int)c<=0x7E)){
-                                WARNING(_print_esc_seq(state));
+                                char msg[MAX_ERR_MSG_CHARS];
+                                _print_esc_seq(state, msg, sizeof(msg));
+                                WARNING(msg);
                                 err = CLI_ERR_UNKNOWN_CSI_CHAR;
                         }
                         else {
