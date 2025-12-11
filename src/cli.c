@@ -249,6 +249,32 @@ CLI_ERR cli_init(Cli *state){
         return CLI_ERR_OK;
 };
 
+CLI_ERR cli_register_command(Cli* state, const char* name, const char* desc, Command_Func_t* func) {
+        if (state == NULL || name == NULL || func == NULL) {
+                return CLI_ERR_INVALID_COMMAND;
+        }
+
+        /* Find empty slot */
+        for (int i = 0; i < MAX_COMMANDS; i++) {
+                if (state->commands[i].name[0] == '\0') {
+                        /* Found empty slot - populate it */
+                        strncpy(state->commands[i].name, name, sizeof(state->commands[i].name) - 1);
+                        state->commands[i].name[sizeof(state->commands[i].name) - 1] = '\0';
+                        if (desc != NULL) {
+                                strncpy(state->commands[i].desc, desc, sizeof(state->commands[i].desc) - 1);
+                                state->commands[i].desc[sizeof(state->commands[i].desc) - 1] = '\0';
+                        } else {
+                                state->commands[i].desc[0] = '\0';
+                        }
+                        state->commands[i].f = func;
+                        return CLI_ERR_OK;
+                }
+        }
+
+        /* No empty slot found */
+        return CLI_ERR_BUFFER_OVERFLOW;
+}
+
 CLI_ERR _cursor_bounds_check(Cli* state, int pos){
 	if (pos > state->head){
 		return CLI_ERR_CURSOR_EXCEEDS_BOUNDS;

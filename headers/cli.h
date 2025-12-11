@@ -119,6 +119,8 @@ CLI_ERR cli_print(Cli* state, const char* msg);
 
 CLI_ERR cli_init(Cli* state);
 
+CLI_ERR cli_register_command(Cli* state, const char* name, const char* desc, Command_Func_t* func);
+
 CLI_ERR cli_handle_input(Cli* state);
 
 #endif
