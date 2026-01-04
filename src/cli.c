@@ -385,9 +385,19 @@ int _check_tokens(char* tok){
 
 CLI_ERR _execute_command_buff(Cli* state){
 	static char* argv[MAX_ARGS];
+	static char cmdbuff[BUFF_MAX_CHARS];  /* Local copy for parsing */
 	const char delim[] = " ";
 	int arg_next_idx =0;
-	char* ptr = state->linebuff;
+
+	/* Copy command to local buffer and clear linebuff BEFORE execution.
+	 * This prevents cli_print() from re-drawing old command text during
+	 * command execution (cli_print re-draws linebuff after each message). */
+	memcpy(cmdbuff, state->linebuff, sizeof(cmdbuff));
+	memset(state->linebuff, 0, sizeof(state->linebuff));
+	state->head = 0;
+	state->hcursor = 0;
+
+	char* ptr = cmdbuff;
 	for (int i = 0; i<MAX_TOKENISATION_ATTEMPTS; i++){
 		char* tok = strtok(ptr, delim);
 		if (tok == NULL){
