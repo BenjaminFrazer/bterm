@@ -21,6 +21,9 @@ static const char *esc_seq_delete_char = "\x1B[P";
 /** Escape sequence - Cursor delete full line */
 static const char *esc_seq_delete_line = "\x1B[2K";
 
+/** Escape sequence - Clear full screen and move cursor home */
+static const char *esc_seq_clear_screen_home = "\x1B[2J\x1B[H";
+
 static int _count_completions(Cli* state, const char* prefix);
 static const char* _nth_completion(Cli* state, const char* prefix, int n);
 static CLI_ERR _complete_buffer(Cli* state);
@@ -34,6 +37,7 @@ static CLI_ERR _exit_history_navigation(Cli* state);
 /* Forward declarations */
 Command_Func_t help;
 Command_Func_t echo;
+Command_Func_t clc;
 
 
 #define MAX_ERR_MSG 10
@@ -135,7 +139,25 @@ int echo(Cli* state, int argn, char* argv[]){
 	return 0;
 }
 
+int clc(Cli* state, int argn, char* argv[])
+{
+	(void)argn;
+	(void)argv;
+
+	if (state == NULL || state->write_data == NULL){
+		return -1;
+	}
+
+	if (state->write_data(esc_seq_clear_screen_home) != 0){
+		return -1;
+	}
+
+	return 0;
+}
+
 Command_t _builtin_commands[] = {
+	{.name="clc", .desc="Clear terminal screen", .f=&clc},
+	{.name="clear", .desc="Alias for clc", .f=&clc},
 	{.name="help", .desc="Display available commands and usage info", .f=&help},
 	{.name="echo", .desc="Print arguments to output", .f=&echo}
 };
